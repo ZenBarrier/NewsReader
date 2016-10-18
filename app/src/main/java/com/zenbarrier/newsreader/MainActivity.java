@@ -17,13 +17,12 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
-import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatActivity {
     SQLiteDatabase myDatabase;
     ListView listView;
-    ArrayList<String> stories;
-    ArrayAdapter<String> adapter;
+    ArrayList<StoryData> stories;
+    ArrayAdapter<StoryData> adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,13 +34,32 @@ public class MainActivity extends AppCompatActivity {
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, stories);
         listView.setAdapter(adapter);
 
-        TaskGetStories getStories = new TaskGetStories();
+        TaskGetNewStories getStories = new TaskGetNewStories();
         myDatabase = this.openOrCreateDatabase("hackerNews",MODE_PRIVATE, null);
-        myDatabase.execSQL("CREATE TABLE IF NOT EXISTS stories (id INTEGER, UNIQUE(id))");
+        myDatabase.execSQL("CREATE TABLE IF NOT EXISTS stories (id INTEGER, url VARCHAR, title VARCHAR, UNIQUE(id))");
         getStories.execute("https://hacker-news.firebaseio.com/v0/newstories.json");
     }
 
-    class TaskGetStories extends AsyncTask<String, Void, String>{
+    class StoryData{
+        String id;
+        String title;
+        String url;
+        StoryData(String storyId){
+            id = storyId;
+        }
+        void setData(String storyURL, String storyTitle){
+            url = storyURL;
+            title = storyTitle;
+        }
+
+        @Override
+        public String toString() {
+            //TODO change id to title
+            return id;
+        }
+    }
+
+    class TaskGetNewStories extends AsyncTask<String, Void, String>{
 
         @Override
         protected String doInBackground(String... urls) {
@@ -72,13 +90,20 @@ public class MainActivity extends AppCompatActivity {
                 for(int i = 0; i < array.length() ; i++){
                     String sql = String.format("INSERT OR IGNORE INTO stories (id) VALUES (%s)", array.get(i).toString());
                     myDatabase.execSQL(sql);
-                    stories.add(array.get(i).toString());
+                    stories.add(new StoryData(array.get(i).toString()));
                 }
                 Log.i("done","done");
                 adapter.notifyDataSetChanged();
             } catch (JSONException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    class TaskGetStoryData extends AsyncTask<String, Void, String>{
+        @Override
+        protected String doInBackground(String... urls) {
+            return null;
         }
     }
 }
