@@ -15,7 +15,6 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
@@ -68,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
             boolean isEqual = false;
 
             if(idData != null && idData instanceof String){
-                if(id == ((String)idData)){
+                if(id.equals((idData))){
                     isEqual = true;
                 }
             }
@@ -109,6 +108,7 @@ public class MainActivity extends AppCompatActivity {
                     String sql = String.format("INSERT OR IGNORE INTO stories (id) VALUES (%s)", array.get(i).toString());
                     myDatabase.execSQL(sql);
                     String id = array.get(i).toString();
+                    //noinspection SuspiciousMethodCalls
                     if(!stories.contains(id)) {
                         stories.add(new StoryData(id));
                     }
@@ -128,6 +128,9 @@ public class MainActivity extends AppCompatActivity {
         protected String doInBackground(String... urls) {
 
             for(StoryData story : stories){
+                if(!story.hasMissingData()){
+                    continue;
+                }
                 String result = "";
                 try {
                     URL url = new URL(String.format("%s%s.json?print=pretty" , urls[0], story.id));
