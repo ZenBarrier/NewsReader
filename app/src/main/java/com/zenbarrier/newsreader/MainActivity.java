@@ -10,6 +10,7 @@ import android.widget.ListView;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -59,8 +60,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public String toString() {
-            //TODO change id to title
-            return id;
+            return title;
         }
 
         @Override
@@ -128,14 +128,42 @@ public class MainActivity extends AppCompatActivity {
         protected String doInBackground(String... urls) {
 
             for(StoryData story : stories){
+                String result = "";
                 try {
-                    URL url = new URL(String.format("%s%s.json" , urls[0], story.id));
-                } catch (MalformedURLException e) {
+                    URL url = new URL(String.format("%s%s.json?print=pretty" , urls[0], story.id));
+                    URLConnection connection = url.openConnection();
+                    InputStream inputStream = connection.getInputStream();
+                    InputStreamReader reader = new InputStreamReader(inputStream);
+                    for(int data = reader.read(); data != -1; data = reader.read()){
+                        result += (char)data;
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                try {
+                    JSONObject jsonObject = new JSONObject(result);
+                    String urlData;
+                    if(jsonObject.has("url")) {
+                        urlData = jsonObject.getString("url");
+                    }
+                    else{
+                        urlData = "https://news.ycombinator.com/item?id="+jsonObject.getString("id");
+                    }
+                    String titleData = jsonObject.getString("title");
+                    story.setData(urlData, titleData);
+                } catch (JSONException e) {
+                    Log.i("missing",result);
                     e.printStackTrace();
                 }
             }
 
             return null;
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            super.onPostExecute(s);
+            adapter.notifyDataSetChanged();
         }
     }
 }
