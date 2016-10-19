@@ -151,6 +151,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                     String titleData = jsonObject.getString("title");
                     story.setData(urlData, titleData);
+                    publishProgress();
                 } catch (JSONException e) {
                     Log.i("missing",result);
                     e.printStackTrace();
@@ -161,8 +162,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        protected void onPostExecute(String s) {
-            super.onPostExecute(s);
+        protected void onProgressUpdate(Void... values) {
+            super.onProgressUpdate(values);
             adapter.notifyDataSetChanged();
         }
     }
