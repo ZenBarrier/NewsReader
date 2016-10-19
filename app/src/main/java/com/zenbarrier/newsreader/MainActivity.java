@@ -48,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 else{
                     Intent intent = new Intent(MainActivity.this, WebActivity.class);
+                    intent.putExtra("url",story.url);
                     startActivity(intent);
                 }
             }
