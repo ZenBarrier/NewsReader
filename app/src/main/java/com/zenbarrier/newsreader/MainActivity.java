@@ -1,6 +1,8 @@
 package com.zenbarrier.newsreader;
 
+import android.content.ContentValues;
 import android.content.Intent;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
 import android.support.design.widget.Snackbar;
@@ -54,9 +56,30 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        try {
+            myDatabase = this.openOrCreateDatabase("hackerNews", MODE_PRIVATE, null);
+            //myDatabase.execSQL("DROP TABLE IF EXISTS stories");
+            myDatabase.execSQL("CREATE TABLE IF NOT EXISTS stories (id INTEGER, url VARCHAR, title VARCHAR, UNIQUE(id))");
+
+            Cursor c = myDatabase.rawQuery("SELECT * FROM stories ORDER BY id DESC LIMIT 5", null);
+            int idIndex = c.getColumnIndex("id");
+            int urlIndex = c.getColumnIndex("url");
+            int titleIndex = c.getColumnIndex("title");
+            while (c.moveToNext()) {
+                String storyId = c.getString(idIndex);
+                String storyTitle = c.getString(titleIndex);
+                String storyUrl = c.getString(urlIndex);
+                StoryData story = new StoryData(storyId, storyTitle, storyUrl);
+                stories.add(story);
+            }
+            c.close();
+            adapter.notifyDataSetChanged();
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+
         TaskGetNewStories getNewStories = new TaskGetNewStories();
-        myDatabase = this.openOrCreateDatabase("hackerNews",MODE_PRIVATE, null);
-        myDatabase.execSQL("CREATE TABLE IF NOT EXISTS stories (id INTEGER, url VARCHAR, title VARCHAR, UNIQUE(id))");
         getNewStories.execute("https://hacker-news.firebaseio.com/v0/newstories.json");
     }
 
@@ -66,6 +89,11 @@ public class MainActivity extends AppCompatActivity {
         String url;
         StoryData(String storyId){
             id = storyId;
+        }
+        StoryData(String storyID, String storyTitle, String storyUrl){
+            id =storyID;
+            title = storyTitle;
+            url = storyUrl;
         }
         void setData(String storyURL, String storyTitle){
             url = storyURL;
@@ -85,12 +113,11 @@ public class MainActivity extends AppCompatActivity {
         public boolean equals(Object idData) {
             boolean isEqual = false;
 
-            if(idData != null && idData instanceof String){
-                if(id.equals((idData))){
+            if(idData != null && idData instanceof StoryData){
+                if(this.id.equals(((StoryData) idData).id)){
                     isEqual = true;
                 }
             }
-
             return isEqual;
         }
     }
@@ -124,11 +151,8 @@ public class MainActivity extends AppCompatActivity {
             try {
                 JSONArray array = new JSONArray(s);
                 for(int i = 0; i < array.length() ; i++){
-                    String sql = String.format("INSERT OR IGNORE INTO stories (id) VALUES (%s)", array.get(i).toString());
-                    myDatabase.execSQL(sql);
                     String id = array.get(i).toString();
-                    //noinspection SuspiciousMethodCalls
-                    if(!stories.contains(id)) {
+                    if(!stories.contains(new StoryData(id))) {
                         stories.add(new StoryData(id));
                     }
                 }
@@ -142,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    class TaskGetStoryData extends AsyncTask<String, Void, String>{
+    class TaskGetStoryData extends AsyncTask<String, StoryData, String>{
         @Override
         protected String doInBackground(String... urls) {
 
@@ -173,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                     String titleData = jsonObject.getString("title");
                     story.setData(urlData, titleData);
-                    publishProgress();
+                    publishProgress(story);
                 } catch (JSONException e) {
                     Log.i("missing",result);
                     e.printStackTrace();
@@ -184,8 +208,17 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        protected void onProgressUpdate(Void... values) {
+        protected void onProgressUpdate(StoryData... values) {
             super.onProgressUpdate(values);
+            StoryData story = values[0];
+            if(story.hasMissingData()){
+                return;
+            }
+            ContentValues cv = new ContentValues();
+            cv.put("id", story.id);
+            cv.put("title", story.title);
+            cv.put("url", story.url);
+            myDatabase.insertWithOnConflict("stories", null, cv, SQLiteDatabase.CONFLICT_IGNORE);
             adapter.notifyDataSetChanged();
         }
     }
